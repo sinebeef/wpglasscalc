@@ -4,7 +4,7 @@ Plugin Name: Woocommerce Glass Sheet Quote Calculator
 Plugin URI: https://github.com/sinebeef
 Description: Sheet glass calculator add to cart function.
 Author: sine
-Version: 0.1
+Version: 0.2
 Author URI: https://github.com/sinebeef
 */
 
