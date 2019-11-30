@@ -8,6 +8,9 @@ if ( ! class_exists( 'Octave_OMSGC_Markup' ) ) {
 
     class Octave_OMSGC_Markup {
 
+		public $eval_price;
+		public $eval_string;
+
         public function __construct(){
             $this->action_hooks();
         }
@@ -24,22 +27,45 @@ if ( ! class_exists( 'Octave_OMSGC_Markup' ) ) {
             add_action( 'wp_ajax_nopriv_omsgc_ajax',  array( $this, 'omsgc_ajax' ) );
             add_action( 'wp_ajax_omsgc_ajax', array( $this, 'omsgc_ajax' ) );
 			
-			
 			add_action( 'woocommerce_add_cart_item_data', array( $this, 'omsgc_custom_cart_item_data' ), 10, 2 );	
+			//add_filter( 'woocommerce_add_cart_item', array( $this, 'custom_cart_item_prices'), 20, 2 );
 			add_action( 'woocommerce_before_calculate_totals', array( $this, 'omsgc_update_cart_item_price' ), 10, 1 );
 			add_filter( 'woocommerce_get_item_data', array( $this, 'omsgc_woocommerce_filter_item_data' ), 10, 2 );	
 			add_action( 'woocommerce_add_order_item_meta', array( $this, 'omsgc_add_order_item_meta' ), 10, 2 );
-        }
+			add_filter( 'woocommerce_cart_item_price', array( $this, 'woocommerce_cart_item_price_filter'), 10, 3 );
+
+			//woocommerce_add_order_item_meta function is deprecated since version 3.0. Replace with wc_add_order_item_meta.
+			//woocommerce_add_order_item_meta is deprecated since version 3.0.0! Use woocommerce_new_order_item instead.
+		}
 		
+		public function woocommerce_cart_item_price_filter( $price, $cart_item, $cart_item_key ) {
+
+			if( isset( $cart_item['unique_key'] ) ){
+				$meep = wc_price( $cart_item['custom_price'] );
+				return $meep;
+			}
+			
+			return $price;
+		}
+
+		// public function custom_cart_item_prices( $cart_item_data, $cart_item_key ) {
+		// 	// Get and set your price calculation
+		// 	if( isset( $cart_item_data['unique_key'] ) ) {
+		// 		$cart_item_data['custom_price'] = $this->eval_price;
+		// 		$cart_item_data['custom_msg'] = $this->eval_string;	
+		// 	}
+		// 	return $cart_item_data;
+		// }
+
 		public function omsgc_custom_cart_item_data( $cart_item_data, $product_id ) {
 
-			$unique_cart_item_key = md5( microtime() . rand() );
-			$cart_item_data['unique_key'] = $unique_cart_item_key;
-			$cart_item_data['custom_price'] = $_POST['jason']['email'];
-			$messagez = array("what","are","we","meaning","apple","orange","motorbike");
-			shuffle($messagez);
-			$finalmsg = implode(" ", $messagez);
-			$cart_item_data['custom_msg'] = $finalmsg;
+			// Only force uniq cart item if it matches custom glass
+			if( $product_id == '7113' ){
+				$unique_cart_item_key = md5( microtime() . rand() );
+				$cart_item_data['unique_key'] = $unique_cart_item_key;
+				$cart_item_data['custom_price'] = $this->eval_price;
+				$cart_item_data['custom_msg'] = $this->eval_string;
+			}
 			return $cart_item_data;
 		}
 
@@ -91,30 +117,38 @@ if ( ! class_exists( 'Octave_OMSGC_Markup' ) ) {
          * IMPORTANT!!! >>> Some validation is required here before live
          */
         public function omsgc_ajax(){
-		$product_id = 6997;
-		WC()->cart->add_to_cart( $product_id );
-		
-		ob_start();
 
-		woocommerce_mini_cart();
-
-		$mini_cart = ob_get_clean();
-
-		$data = array(
-		  'fragments' => array(
-			  'div.widget_shopping_cart_content' => '<div class="widget_shopping_cart_content">' . $mini_cart . '</div>',
-			),
-		  'cart_hash' => WC()->cart->get_cart_hash(),
+		$sobj = $_POST['jason'];
+	
+		$gc_data = array(
+			"gc_height" => $sobj['gcheight'],
+			"gc_width" => $sobj['gcwidth'],
+			"gc_type" => $sobj['gctype'],
+			"gc_size" => $sobj['gcsize'],
+			"gc_holes" => $sobj['gcholes'],
+			"gc_cuts" => $sobj['gccuts']
 		);
 
-		// ob_start();
-		// print_r( $data );
-		// $gimmie = ob_get_clean();
+		$result = $this->omsgc_form_evaluate($gc_data);
+	
+		echo var_dump($result);
+        die();
+		}
 		
-		wp_send_json( $data );		
+		public function omsgc_form_evaluate( $f ){
 
-        //die();
-        }
+			$total = ( $f['gc_height'] + $f['gc_width'] ) / 2;
+			$this->eval_price = $total;
+			
+			$string = "H:".$f['gc_height']."mm W:".$f['gc_width']."mm T:".$f['gc_type']." S:".$f['gc_size']." H:".$f['gc_holes']." C:".$f['gc_cuts'];
+			$this->eval_string = $string;
+
+			// Hidden from search and catalog item 'glass panel' ID
+			$product_id = 7113;
+			WC()->cart->add_to_cart( $product_id );
+
+			return $this->eval_string;
+		}
 
     } // Class ends
 }
